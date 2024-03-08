@@ -1,9 +1,11 @@
-package org.example.concurrency.stock.facade;
+package org.example.concurrency.stock.service;
 
+import org.example.concurrency.stock.DisableDistributedLock;
 import org.example.concurrency.stock.Stock;
 import org.example.concurrency.stock.repository.StockRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -12,21 +14,23 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
+@DisableDistributedLock // 분산락 끄기
 @SpringBootTest
-class LettuceLockStockFacadeTest {
+class AopLockServiceFailTest {
 
     @Autowired
-    private LettuceLockStockFacade lettuceLockStockFacade;
+    private AopLockService aopLockService;
 
     @Autowired
     private StockRepository stockRepository;
 
+
     @BeforeEach
     public void insert() {
         Stock stock = new Stock(1L, 100L);
-
         stockRepository.saveAndFlush(stock);
     }
 
@@ -35,8 +39,10 @@ class LettuceLockStockFacadeTest {
         stockRepository.deleteAll();
     }
 
+
+    @DisplayName("분산락 끄고 실행하면 재고 불일치, 동시에 100개의 요청하면 재고가 정확하게 감산 안됨")
     @Test
-    void 동시에_100개의요청() throws InterruptedException { // 정상적으로 성공 - 3.8초 걸림
+    void decreaseFail() throws InterruptedException { // 0.5초 정도 걸림
         int threadCount = 100;
         ExecutorService executorService = Executors.newFixedThreadPool(32);
         CountDownLatch latch = new CountDownLatch(threadCount);
@@ -44,9 +50,7 @@ class LettuceLockStockFacadeTest {
         for (int i = 0; i < threadCount; i++) {
             executorService.submit(() -> {
                 try {
-                    lettuceLockStockFacade.decrease(1L, 1L);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
+                    aopLockService.decrease(1L, 1L);
                 } finally {
                     latch.countDown();
                 }
@@ -57,9 +61,9 @@ class LettuceLockStockFacadeTest {
 
         Stock stock = stockRepository.findById(1L).orElseThrow();
 
-        // 100 - (100 * 1) = 0
-        assertEquals(0, stock.getQuantity());
+        // 분산락 꺼서 실패하는게 정상
+        System.out.println("stock.getQuantity() = " + stock.getQuantity());
+        assertNotEquals(0, stock.getQuantity());
     }
-
 
 }

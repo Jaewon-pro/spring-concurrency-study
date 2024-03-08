@@ -36,7 +36,7 @@ class OptimisticStockFacadeTest {
     }
 
     @Test
-    void 동시에_100개의요청() throws InterruptedException { // 정상적으로 성공 - 10초 걸림
+    void 동시에_100개의요청() throws InterruptedException { // 정상적으로 성공 - 1.126초 걸림
         int threadCount = 100;
         ExecutorService executorService = Executors.newFixedThreadPool(32);
         CountDownLatch latch = new CountDownLatch(threadCount);

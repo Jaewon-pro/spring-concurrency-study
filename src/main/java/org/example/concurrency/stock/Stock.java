@@ -17,7 +17,7 @@ public class Stock {
 
     private Long quantity;
 
-    @Version
+    @Version // Optimistic Locking, AOP 분산락은 있어도, 없어도 잘 동작
     private Long version;
 
     public Stock(Long productId, Long quantity) {
